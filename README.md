@@ -39,12 +39,7 @@ tar xvfz Lung5_Rep1+SMI+Flat+data.tar.gz
 ```
 library(Seurat)
 setwd("E:/project/ESCC/data")
-#nano.obj <- LoadNanostring(data.dir = "./Lung5_Rep1/Lung5_Rep1-Flat_files_and_images", fov = "lung5.rep1")
-data <- ReadNanostring(data.dir = ".", type = "centroids")
-cents <- CreateCentroids(data$centroids)
-coords <- CreateFOV(coords = list("centroids" = cents), type = "centroids")
-nano.obj <- CreateSeuratObject(counts = data$matrix)
-nano.obj[["fov"]]<-subset(coords, cell=Cells(nano.obj))
+nano.obj <- LoadNanostring(data.dir = "./Lung5_Rep1/Lung5_Rep1-Flat_files_and_images", fov = "lung5.rep1")
 ```
 ## 3.2 细胞注释
 对于这个数据集，我们并没有进行无监督分析，而是将Nanostring的分析结果与Azimuth健康人类肺脏参考数据库进行对比，这个数据库是通过单细胞RNA测序（scRNA-seq）技术建立的。我们使用的是Azimuth软件的0.4.3版本以及人类肺脏参考数据库的1.0.0版本。你可以从[注释信息](https://seurat.nygenome.org/vignette_data/spatial_vignette_2/nanostring_data.Rds)这个链接下载预先计算好的分析结果，这些结果包括了注释信息、预测分数以及UMAP的可视化图。每个细胞平均检测到的转录本数量是249，这在进行细胞注释时确实带来了一定的不确定性。
@@ -64,13 +59,50 @@ nano.obj <- SCTransform(nano.obj, assay = "Nanostring", clip.range = c(-10, 10),
 # text display of annotations and prediction scores
 head(slot(object = nano.obj, name = "meta.data")[2:5])
 ```
+
 ## 3.4 UMAP降维
 我们可以可视化 Nanostring 细胞和注释，并使用UMAP降维。请注意，对于此 NSCLC 样本，肿瘤样本被注释为“基础”，这是健康参考中最接近的细胞类型匹配。
 ```
 DimPlot(nano.obj)
 ```
 ![umap](./pic/umap.png "umap")<br>
+## 3.5 常规方法--无监督聚类
+这里标准化也可以使用单细胞测序的常规方法：
+```
+nano.obj <- NormalizeData(nano.obj)
+nano.obj <- ScaleData(nano.obj)
+nano.obj <- FindVariableFeatures(nano.obj)
+```
+然后PCA降维：
+```
+nano.obj <- RunPCA(nano.obj, features = VariableFeatures(object = nano.obj))
+nano.obj <- RunUMAP(nano.obj, dims = 1:50)
+```
+聚类：
+```
+nano.obj <- FindNeighbors(nano.obj, reduction = "pca", dims = 1:50)
+nano.obj <- FindClusters(nano.obj, resolution = 0.3)
 
+DimPlot(nano.obj, raster = FALSE, label = TRUE)
+```
+细胞注释：
+```
+cluster_markers <- FindAllMarkers(nano.obj, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+list_marker <- cluster_markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
+df_marker=data.frame(p_val = list_marker$p_val,
+                     avg_log2FC = list_marker$avg_log2FC,
+                     pct.1 = list_marker$pct.1,
+                     pct.2 = list_marker$pct.2,
+                     p_val_adj = list_marker$p_val_adj,
+                     cluster = list_marker$cluster,
+                     gene = list_marker$gene)
+write.csv(df_marker,"marker.csv")
+
+nano.obj <- RenameIdents(nano.obj, '0' = "Tumor", '1' = "Macro", '2' = "Fibro_SMC", '3' = "T_NK", '4' = "Neutro", '5' = "Endo_Peri", '6' = "B", '7' = "Plasma B", '8' = "Plasma B", '9' = "Mono", '10' = "Epi", '11' = "Mast", '12' = "A_SMC")
+
+DimPlot(nano.obj, reduction = "umap", label = TRUE, pt.size = 0.5)
+```
+![无监督聚类](./pic/数据下载.png "无监督聚类")<br>
 # 4 细胞类型和表达定位模式的可视化
 ImageDimPlot() 这个函数会根据细胞在空间上的分布位置来绘制它们，并依据细胞被指定的类型来对它们进行颜色标记。可以观察到，基底细胞群（也就是肿瘤细胞）在空间上的排列非常紧凑有序，这与我们的预期是一致的。
 ```
@@ -83,6 +115,7 @@ ImageDimPlot(nano.obj, fov = "lung5.rep1", cells = WhichCells(nano.obj, idents =
 ```
 ![部分细胞](./pic/部分细胞.png "部分细胞分布")<br>
 # 5 可视化基因表达标记
+KRT17是上皮基底细胞的标志物，下面以它为例进行可视化
 ## 5.1 VlnPlot
 ```
 VlnPlot(nano.obj, features = "KRT17", assay = "Nanostring", layer = "counts", pt.size = 0.1, y.max = 30) + NoLegend()
@@ -115,10 +148,10 @@ nano.obj[["zoom1"]] <- basal.crop
 DefaultBoundary(nano.obj[["zoom1"]]) <- "segmentation"
 ImageDimPlot(nano.obj, fov = "zoom1", cols = "polychrome", coord.fixed = FALSE)
 ```
-![zoom-in](./pic/zoom-in.png "zoom-in")
+![zoom-in](./pic/zoom-in.png "zoom-in")<br>
 * 注释细胞和标志物
 ```
 ImageDimPlot(nano.obj, fov = "zoom1", cols = "polychrome", alpha = 0.3, molecules = c("KRT17", "IL7R", "TPSAB1"), mols.size = 0.3, nmols = 20000, border.color = "black", coord.fixed = FALSE)
 ```
-![marker-cell](./pic/marker-cell.png "marker-cell")
+![marker-cell](./pic/marker-cell.png "marker-cell")<br>
 
