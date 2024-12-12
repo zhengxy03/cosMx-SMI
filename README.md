@@ -27,6 +27,98 @@ CosMx SMI是一种基于杂交的单分子条形码检测的、无酶、无核�
 * 细胞分割
 # 3 下游数据处理
 ## 3.1 数据下载
-这里使用公开的数据集 
-## 3.1 质量控制QC
+这里使用NSCLS公开数据集中的一个重复进行示例：
+```
+wget https://staging.nanostring.com/resources/smi-ffpe-dataset-lung5-rep1-data/
+
+tar xvfz Lung5_Rep1+SMI+Flat+data.tar.gz
+```
+解压之后可以看到这些文件：<br>
+![数据下载](./pic/数据下载.png "数据下载")<br>
+使用Seurat创建对象进行后续分析：
+```
+library(Seurat)
+setwd("E:/project/ESCC/data")
+#nano.obj <- LoadNanostring(data.dir = "./Lung5_Rep1/Lung5_Rep1-Flat_files_and_images", fov = "lung5.rep1")
+data <- ReadNanostring(data.dir = ".", type = "centroids")
+cents <- CreateCentroids(data$centroids)
+coords <- CreateFOV(coords = list("centroids" = cents), type = "centroids")
+nano.obj <- CreateSeuratObject(counts = data$matrix)
+nano.obj[["fov"]]<-subset(coords, cell=Cells(nano.obj))
+```
+## 3.2 细胞注释
+对于这个数据集，我们并没有进行无监督分析，而是将Nanostring的分析结果与Azimuth健康人类肺脏参考数据库进行对比，这个数据库是通过单细胞RNA测序（scRNA-seq）技术建立的。我们使用的是Azimuth软件的0.4.3版本以及人类肺脏参考数据库的1.0.0版本。你可以从[注释信息](https://seurat.nygenome.org/vignette_data/spatial_vignette_2/nanostring_data.Rds)这个链接下载预先计算好的分析结果，这些结果包括了注释信息、预测分数以及UMAP的可视化图。每个细胞平均检测到的转录本数量是249，这在进行细胞注释时确实带来了一定的不确定性。
+```
+azimuth.data <- readRDS("../ref/nanostring_data.Rds")
+nano.obj <- AddMetaData(nano.obj, metadata = azimuth.data$annotations)
+nano.obj[["proj.umap"]] <- azimuth.data$umap
+Idents(nano.obj) <- nano.obj$predicted.annotation.l1
+```
+## 3.3 预处理与标准化
+SCTransform函数是一种数据标准化和变量选择的方法，它通过正则化和缩放数据来减少技术变异，并提高数据的可比性。
+```
+# set to avoid error exceeding max allowed size of globals
+options(future.globals.maxSize = 8000 * 1024^2)
+nano.obj <- SCTransform(nano.obj, assay = "Nanostring", clip.range = c(-10, 10), verbose = FALSE)
+
+# text display of annotations and prediction scores
+head(slot(object = nano.obj, name = "meta.data")[2:5])
+```
+## 3.4 UMAP降维
+我们可以可视化 Nanostring 细胞和注释，并使用UMAP降维。请注意，对于此 NSCLC 样本，肿瘤样本被注释为“基础”，这是健康参考中最接近的细胞类型匹配。
+```
+DimPlot(nano.obj)
+```
+![umap](./pic/umap.png "umap")<br>
+
+# 4 细胞类型和表达定位模式的可视化
+ImageDimPlot() 这个函数会根据细胞在空间上的分布位置来绘制它们，并依据细胞被指定的类型来对它们进行颜色标记。可以观察到，基底细胞群（也就是肿瘤细胞）在空间上的排列非常紧凑有序，这与我们的预期是一致的。
+```
+ImageDimPlot(nano.obj, fov = "lung5.rep1", axes = TRUE, cols = "glasbey")
+```
+![细胞分布](./pic/细胞分布.png "细胞分布")<br>
+可以突出显示一些选定组的定位：
+```
+ImageDimPlot(nano.obj, fov = "lung5.rep1", cells = WhichCells(nano.obj, idents = c("Basal", "Macrophage", "Smooth Muscle", "CD4 T")), cols = c("red", "green", "blue", "orange"), size = 0.6)
+```
+![部分细胞](./pic/部分细胞.png "部分细胞分布")<br>
+# 5 可视化基因表达标记
+## 5.1 VlnPlot
+```
+VlnPlot(nano.obj, features = "KRT17", assay = "Nanostring", layer = "counts", pt.size = 0.1, y.max = 30) + NoLegend()
+```
+![VlnPlot](./pic/VlnPlot.png "VlnPlot")<br>
+## 5.2 FeaturePlot
+```
+FeaturePlot(nano.obj, features = "KRT17", max.cutoff = "q95")
+```
+![FeaturePlot](./pic/FeaturePlot.png "FeaturePlot")
+## 5.3 ImageFeaturePlot
+```
+ImageFeaturePlot(nano.obj, fov = "lung5.rep1", features = "KRT17", max.cutoff = "q95")
+```
+![ImageFeaturePlot](./pic/ImageFeaturePlot.png "ImageFeaturePlot")
+## 5.4 ImageDimPlot
+```
+ImageDimPlot(nano.obj, fov = "lung5.rep1", alpha = 0.3, molecules = "KRT17", nmols = 10000) + NoLegend()
+```
+![ImageDimPlot](./pic/ImageDimPlot.png "ImageDimPlot")<br>
+* 还可以共同可视化多个标记物的表达，包括 KRT17（基底细胞）、C1QA（巨噬细胞）、IL7R（T 细胞）和 TAGLN（平滑肌细胞）。
+```
+ImageDimPlot(nano.obj, fov = "lung5.rep1", group.by = NA, alpha = 0.3, molecules = c("KRT17", "C1QA", "IL7R", "TAGLN"), nmols = 20000)
+```
+![多个标记物分布](./pic/多个标记物分布.png "多个标记物分布")<br>
+* 还可以使用 Crop() 函数放大一个富含基底的区域。放大后，可以看见单个细胞边界。
+```
+basal.crop <- Crop(nano.obj[["lung5.rep1"]], x = c(159500, 164000), y = c(8700, 10500))
+nano.obj[["zoom1"]] <- basal.crop
+DefaultBoundary(nano.obj[["zoom1"]]) <- "segmentation"
+ImageDimPlot(nano.obj, fov = "zoom1", cols = "polychrome", coord.fixed = FALSE)
+```
+![zoom-in](./pic/zoom-in.png "zoom-in")
+* 注释细胞和标志物
+```
+ImageDimPlot(nano.obj, fov = "zoom1", cols = "polychrome", alpha = 0.3, molecules = c("KRT17", "IL7R", "TPSAB1"), mols.size = 0.3, nmols = 20000, border.color = "black", coord.fixed = FALSE)
+```
+![marker-cell](./pic/marker-cell.png "marker-cell")
 
