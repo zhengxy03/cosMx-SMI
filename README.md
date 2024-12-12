@@ -121,4 +121,4 @@ ImageDimPlot(nano.obj, fov = "zoom1", cols = "polychrome", coord.fixed = FALSE)
 ImageDimPlot(nano.obj, fov = "zoom1", cols = "polychrome", alpha = 0.3, molecules = c("KRT17", "IL7R", "TPSAB1"), mols.size = 0.3, nmols = 20000, border.color = "black", coord.fixed = FALSE)
 ```
 ![marker-cell](./pic/marker-cell.png "marker-cell")
-
+![q](./pic/Rplot.png "1")
