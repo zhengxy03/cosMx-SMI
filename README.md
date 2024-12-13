@@ -25,6 +25,7 @@ CosMx SMI是一种基于杂交的单分子条形码检测的、无酶、无核�
 * 探针杂交
 * RNA 读取与成像
 * 细胞分割
+* 质量控制
 # 3 下游数据处理
 ## 3.1 数据下载
 这里使用NSCLS公开数据集中的一个重复进行示例：
@@ -71,7 +72,7 @@ DimPlot(nano.obj)
 ```
 ![umap](./pic/umap.png "umap")<br>
 ## 3.5 常规方法--无监督聚类
-这里标准化也可以使用单细胞测序的常规方法：
+这里`标准化`也可以使用单细胞测序的常规方法：
 ```
 nano.obj <- NormalizeData(nano.obj)
 nano.obj <- ScaleData(nano.obj)
@@ -82,14 +83,14 @@ nano.obj <- FindVariableFeatures(nano.obj)
 nano.obj <- RunPCA(nano.obj, features = VariableFeatures(object = nano.obj))
 nano.obj <- RunUMAP(nano.obj, dims = 1:50)
 ```
-聚类：
+`聚类`：
 ```
 nano.obj <- FindNeighbors(nano.obj, reduction = "pca", dims = 1:50)
 nano.obj <- FindClusters(nano.obj, resolution = 0.3)
 
 DimPlot(nano.obj, raster = FALSE, label = TRUE)
 ```
-细胞注释，这里的手动注释是查看Nanostring官方的细胞类型数据集：
+`细胞注释`，这里的手动注释是查看Cellmarker2.0：
 ```
 cluster_markers <- FindAllMarkers(nano.obj, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
 list_marker <- cluster_markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
