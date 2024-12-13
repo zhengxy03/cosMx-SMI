@@ -35,6 +35,8 @@ tar xvfz Lung5_Rep1+SMI+Flat+data.tar.gz
 ```
 解压之后可以看到这些文件：<br>
 ![数据下载](./pic/数据下载.png "数据下载")<br>
+文件里的具体内容可以看[这里](https://nanostring-public-share.s3.us-west-2.amazonaws.com/SMI-Compressed/SMI-ReadMe.html)<br>
+
 使用Seurat创建对象进行后续分析：
 ```
 library(Seurat)
@@ -42,7 +44,9 @@ setwd("E:/project/ESCC/data")
 nano.obj <- LoadNanostring(data.dir = "./Lung5_Rep1/Lung5_Rep1-Flat_files_and_images", fov = "lung5.rep1")
 ```
 ## 3.2 细胞注释
-对于这个数据集，我们并没有进行无监督分析，而是将Nanostring的分析结果与Azimuth健康人类肺脏参考数据库进行对比，这个数据库是通过单细胞RNA测序（scRNA-seq）技术建立的。我们使用的是Azimuth软件的0.4.3版本以及人类肺脏参考数据库的1.0.0版本。你可以从[注释信息](https://seurat.nygenome.org/vignette_data/spatial_vignette_2/nanostring_data.Rds)这个链接下载预先计算好的分析结果，这些结果包括了注释信息、预测分数以及UMAP的可视化图。每个细胞平均检测到的转录本数量是249，这在进行细胞注释时确实带来了一定的不确定性。
+对于这个数据集，Seurat v5官网上并没有进行无监督分析，而是将Nanostring的分析结果与Azimuth健康人类肺脏参考数据库进行对比，这个数据库是通过单细胞RNA测序（scRNA-seq）技术建立的。使用的是Azimuth软件的0.4.3版本以及人类肺脏参考数据库的1.0.0版本。可以从[这个链接](https://seurat.nygenome.org/vignette_data/spatial_vignette_2/nanostring_data.Rds)下载预先计算好的分析结果，这些结果包括了注释信息、预测分数以及UMAP的可视化图。每个细胞平均检测到的转录本数量是249。<br>
+
+但是这个数据库是来自健康样本，这里分析的组织是来自肿瘤样本，因此这种注释可能不准确，我后面又进行了常规无监督聚类分析及手动细胞注释。
 ```
 azimuth.data <- readRDS("../ref/nanostring_data.Rds")
 nano.obj <- AddMetaData(nano.obj, metadata = azimuth.data$annotations)
@@ -73,7 +77,7 @@ nano.obj <- NormalizeData(nano.obj)
 nano.obj <- ScaleData(nano.obj)
 nano.obj <- FindVariableFeatures(nano.obj)
 ```
-然后PCA降维：
+然后PCA降维，这里的维度Nanostring使用手册上默认50，因此我这里也设置50：
 ```
 nano.obj <- RunPCA(nano.obj, features = VariableFeatures(object = nano.obj))
 nano.obj <- RunUMAP(nano.obj, dims = 1:50)
@@ -85,7 +89,7 @@ nano.obj <- FindClusters(nano.obj, resolution = 0.3)
 
 DimPlot(nano.obj, raster = FALSE, label = TRUE)
 ```
-细胞注释：
+细胞注释，这里的手动注释是查看Nanostring官方的细胞类型数据集：
 ```
 cluster_markers <- FindAllMarkers(nano.obj, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
 list_marker <- cluster_markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
@@ -98,13 +102,13 @@ df_marker=data.frame(p_val = list_marker$p_val,
                      gene = list_marker$gene)
 write.csv(df_marker,"marker.csv")
 
-nano.obj <- RenameIdents(nano.obj, '0' = "Tumor", '1' = "Macro", '2' = "Fibro_SMC", '3' = "T_NK", '4' = "Neutro", '5' = "Endo_Peri", '6' = "B", '7' = "Plasma B", '8' = "Plasma B", '9' = "Mono", '10' = "Epi", '11' = "Mast", '12' = "A_SMC")
+nano.obj <- RenameIdents(nano.obj, '0' = "Tumor", '1' = "Macro", '2' = "naive T cell", '3' = "Fibroblast", '4' = "Neutrophil", '5' = "Endothelial cell", '6' = "B", '7' = "Plasma", '8' = "Macro", '9' = "Proliferative", '10' = "MPC", '11' = "CTL")
 
 DimPlot(nano.obj, reduction = "umap", label = TRUE, pt.size = 0.5)
 ```
-![无监督聚类](./pic/数据下载.png "无监督聚类")<br>
+![无监督聚类](./pic/无监督聚类.png "无监督聚类")<br>
 # 4 细胞类型和表达定位模式的可视化
-ImageDimPlot() 这个函数会根据细胞在空间上的分布位置来绘制它们，并依据细胞被指定的类型来对它们进行颜色标记。可以观察到，基底细胞群（也就是肿瘤细胞）在空间上的排列非常紧凑有序，这与我们的预期是一致的。
+ImageDimPlot() 这个函数会根据细胞在空间上的分布位置来绘制它们，并依据细胞被指定的类型来对它们进行颜色标记。可以观察到，基底细胞群在空间上的排列非常紧凑有序，这与我们的预期是一致的。
 ```
 ImageDimPlot(nano.obj, fov = "lung5.rep1", axes = TRUE, cols = "glasbey")
 ```
