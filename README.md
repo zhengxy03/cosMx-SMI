@@ -44,6 +44,7 @@ library(Seurat)
 setwd("E:/project/ESCC/data")
 nano.obj <- LoadNanostring(data.dir = "./Lung5_Rep1/Lung5_Rep1-Flat_files_and_images", fov = "lung5.rep1")
 ```
+* fov 是指 "field of view" 的缩写，它在单细胞基因表达数据的上下文中通常用来指代特定的视野或区域。在空间转录组学或类似的技术中，组织样本被分割成多个视野或区域，每个区域可以单独分析，以获得该区域的基因表达数据。
 ## 3.2 细胞注释
 对于这个数据集，Seurat v5官网上并没有进行无监督分析，而是将Nanostring的分析结果与Azimuth健康人类肺脏参考数据库进行对比，这个数据库是通过单细胞RNA测序（scRNA-seq）技术建立的。使用的是Azimuth软件的0.4.3版本以及人类肺脏参考数据库的1.0.0版本。可以从[这个链接](https://seurat.nygenome.org/vignette_data/spatial_vignette_2/nanostring_data.Rds)下载预先计算好的分析结果，这些结果包括了注释信息、预测分数以及UMAP的可视化图。每个细胞平均检测到的转录本数量是249。<br>
 
@@ -78,7 +79,7 @@ nano.obj <- NormalizeData(nano.obj)
 nano.obj <- ScaleData(nano.obj)
 nano.obj <- FindVariableFeatures(nano.obj)
 ```
-然后PCA降维，这里的维度Nanostring使用手册上默认50，因此我这里也设置50：
+然后`PCA降维`，这里的维度Nanostring使用手册上默认50，因此我这里也设置50：
 ```
 nano.obj <- RunPCA(nano.obj, features = VariableFeatures(object = nano.obj))
 nano.obj <- RunUMAP(nano.obj, dims = 1:50)
@@ -113,6 +114,7 @@ ImageDimPlot() 这个函数会根据细胞在空间上的分布位置来绘制�
 ```
 ImageDimPlot(nano.obj, fov = "lung5.rep1", axes = TRUE, cols = "glasbey")
 ```
+ * cols = "glasbey" 这样的参数设置通常出现在绘图函数中，用于指定颜色方案。<br>
 ![细胞分布](./pic/细胞分布.png "细胞分布")<br>
 可以突出显示一些选定组的定位：
 ```
@@ -120,16 +122,19 @@ ImageDimPlot(nano.obj, fov = "lung5.rep1", cells = WhichCells(nano.obj, idents =
 ```
 ![部分细胞](./pic/部分细胞.png "部分细胞分布")<br>
 # 5 可视化基因表达标记
-KRT17是上皮基底细胞的标志物，下面以它为例进行可视化
+KRT17是上皮基底细胞的标志物，下面以它为例进行可视化。
 ## 5.1 VlnPlot
 ```
 VlnPlot(nano.obj, features = "KRT17", assay = "Nanostring", layer = "counts", pt.size = 0.1, y.max = 30) + NoLegend()
 ```
+* 在Seurat中，一个assay是一组相关的数据，可以是基因表达矩阵、蛋白质表达矩阵等。<br>
 ![VlnPlot](./pic/VlnPlot.png "VlnPlot")<br>
 ## 5.2 FeaturePlot
+FeaturePlot 函数用于生成特定基因或特征的表达水平图。这种图通常以点图的形式展示，可以直观地看到不同细胞中特定基因的表达水平。
 ```
 FeaturePlot(nano.obj, features = "KRT17", max.cutoff = "q95")
 ```
+* max.cutoff = "q95" 是一个参数，用于指定表达水平的上限。超过这个值的数据将不被显示。
 ![FeaturePlot](./pic/FeaturePlot.png "FeaturePlot")
 ## 5.3 ImageFeaturePlot
 ```
@@ -140,6 +145,8 @@ ImageFeaturePlot(nano.obj, fov = "lung5.rep1", features = "KRT17", max.cutoff = 
 ```
 ImageDimPlot(nano.obj, fov = "lung5.rep1", alpha = 0.3, molecules = "KRT17", nmols = 10000) + NoLegend()
 ```
+* alpha = 0.3 设置了图中点的透明度。
+* nmols = 10000 是一个参数，用于指定在图中显示的最大分子数量。nmols 参数限制了图中显示的分子点的数量，这有助于控制图像的复杂性和可读性。
 ![ImageDimPlot](./pic/ImageDimPlot.png "ImageDimPlot")<br>
 * 还可以共同可视化多个标记物的表达，包括 KRT17（基底细胞）、C1QA（巨噬细胞）、IL7R（T 细胞）和 TAGLN（平滑肌细胞）。
 ```
