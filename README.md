@@ -30,7 +30,7 @@ CosMx SMI是一种基于杂交的单分子条形码检测的、无酶、无核�
 ## 3.1 数据下载
 这里使用NSCLS公开数据集中的一个重复进行示例：
 ```
-wget https://staging.nanostring.com/resources/smi-ffpe-dataset-lung5-rep1-data/
+curl -LO https://nanostring-public-share.s3.us-west-2.amazonaws.com/SMI-Compressed/Lung5_Rep1/Lung5_Rep1+SMI+Flat+data.tar.gz
 
 tar xvfz Lung5_Rep1+SMI+Flat+data.tar.gz
 ```
@@ -160,3 +160,23 @@ ImageDimPlot(nano.obj, fov = "zoom1", cols = "polychrome", alpha = 0.3, molecule
 ```
 ![marker-cell](./pic/marker-cell.png "marker-cell")<br>
 
+---
+下面使用淋巴结的数据进行查看：
+# 1 下载数据
+```
+curl -LO https://smi-public.objects.liquidweb.services/LN28_6k/seurat.zip
+unzip seurat.zip
+```
+这里提供了Seurat格式的数据直接下载转化为seurat对象即可：
+```
+library(Seurat)
+lymph.obj <- readRDS("seurat.rds")
+```
+# 2 可视化
+options(future.globals.maxSize = 8000 * 1024^2)
+lymph.obj <- SCTransform(lymph.obj, assay = "RNA", clip.range = c(-10, 10), verbose = FALSE)
+DimPlot(lymph.obj, reduction = "umap", label = TRUE, pt.size = 0.5)
+这里数据已经处理好了，可以直接使用ImageDimPlot()进行可视化分析
+```
+
+ImageDimPlot(lymph.obj, fov = "lung5.rep1", axes = TRUE, cols = "glasbey")
