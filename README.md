@@ -65,7 +65,7 @@ nano.obj <- SCTransform(nano.obj, assay = "Nanostring", clip.range = c(-10, 10),
 # text display of annotations and prediction scores
 head(slot(object = nano.obj, name = "meta.data")[2:5])
 ```
-
+* 在处理大型单细胞RNA-seq数据时，内存和计算资源是一个重要的考虑因素。SCTransform 函数尤其需要大量的内存，因为它涉及到复杂的数值计算和矩阵操作。确保在继续之前解决这些潜在的问题。
 ## 3.4 UMAP降维
 我们可以可视化 Nanostring 细胞和注释，并使用UMAP降维。请注意，对于此 NSCLC 样本，肿瘤样本被注释为“基础”，这是健康参考中最接近的细胞类型匹配。
 ```

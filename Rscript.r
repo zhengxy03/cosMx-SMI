@@ -10,8 +10,6 @@ Idents(nano.obj) <- nano.obj$predicted.annotation.l1
 options(future.globals.maxSize = 8000 * 1024^2)
 nano.obj <- SCTransform(nano.obj, assay = "Nanostring", clip.range = c(-10, 10), verbose = FALSE)
 
-head(slot(object = nano.obj, name = "meta.data")[2:5])
-
 basal.crop <- Crop(nano.obj[["lung5.rep1"]], x = c(159500, 164000), y = c(8700, 10500))
 nano.obj[["zoom1"]] <- basal.crop
 DefaultBoundary(nano.obj[["zoom1"]]) <- "segmentation"
