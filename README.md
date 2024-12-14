@@ -179,4 +179,6 @@ unzip seurat.zip
 library(Seurat)
 lymph.obj <- readRDS("seurat.rds")
 ```
-数据不全，没有空间信息。。。
+数据不全，没有空间信息。。。<br>
+
+下载原始数据后也没有空间信息，想绘制umap图但是内存不够。。。
