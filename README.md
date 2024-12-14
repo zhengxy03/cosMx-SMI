@@ -179,11 +179,4 @@ unzip seurat.zip
 library(Seurat)
 lymph.obj <- readRDS("seurat.rds")
 ```
-# 2 可视化
-options(future.globals.maxSize = 8000 * 1024^2)
-lymph.obj <- SCTransform(lymph.obj, assay = "RNA", clip.range = c(-10, 10), verbose = FALSE)
-DimPlot(lymph.obj, reduction = "umap", label = TRUE, pt.size = 0.5)
-这里数据已经处理好了，可以直接使用ImageDimPlot()进行可视化分析
-```
-
-ImageDimPlot(lymph.obj, fov = "lung5.rep1", axes = TRUE, cols = "glasbey")
+数据不全，没有空间信息。。。
