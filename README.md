@@ -169,7 +169,6 @@ ImageDimPlot(nano.obj, fov = "zoom1", cols = "polychrome", alpha = 0.3, molecule
 
 ---
 下面使用淋巴结的数据进行查看：
-# 1 下载数据
 ```
 curl -LO https://smi-public.objects.liquidweb.services/LN28_6k/seurat.zip
 unzip seurat.zip
